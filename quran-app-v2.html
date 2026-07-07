@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="ur" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>لفظی — قرآن، ترجمہ اور تفسیر</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Noto+Nastaliq+Urdu:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink: #0F2035; --ink-2: #16304C;
+    --gold: #C9A24B; --gold-soft: #E4C777;
+    --parchment: #EFE4C8; --parchment-dim: #D9CBA6;
+    --maroon: #8B3A3A; --teal: #2F5D62; --cream-text: #F6EFDC;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background: radial-gradient(1200px 800px at 50% -10%, #1A3552 0%, var(--ink) 55%, #0A1522 100%);
+    min-height:100vh; font-family:'Inter', sans-serif; color: var(--cream-text);
+    padding: 20px 12px 60px;
+  }
+  .wrap{ max-width: 720px; margin: 0 auto; }
+  header{ text-align:center; margin-bottom: 18px; }
+  .brand{ font-family:'Amiri', serif; font-size: 2rem; color: var(--gold-soft); }
+  .brand-sub{ font-family:'Noto Nastaliq Urdu', serif; font-size: 1rem; color: var(--parchment-dim); margin-top:4px; }
+
+  .search-box{
+    width:100%; padding:10px 14px; border-radius:8px; border:1px solid var(--gold);
+    background: rgba(255,255,255,0.05); color: var(--cream-text); font-family:'Noto Nastaliq Urdu',serif;
+    font-size:1rem; margin: 16px 0;
+  }
+  .search-box::placeholder{ color: var(--parchment-dim); }
+
+  .surah-list{ display:flex; flex-direction:column; gap:8px; }
+  .surah-item{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding: 12px 14px; border:1px solid rgba(201,162,75,0.35); border-radius:8px;
+    cursor:pointer; transition: background .15s ease;
+  }
+  .surah-item:hover{ background: rgba(201,162,75,0.08); }
+  .s-num{
+    width:28px; height:28px; border:1px solid var(--gold); border-radius:50%;
+    display:flex; align-items:center; justify-content:center; font-size:0.75rem; color:var(--gold-soft); flex-shrink:0;
+  }
+  .s-names{ flex:1; text-align:right; }
+  .s-ar{ font-family:'Amiri', serif; font-size:1.3rem; color:var(--cream-text); }
+  .s-meta{ font-family:'Inter'; font-size:0.7rem; color:var(--parchment-dim); margin-top:2px; }
+
+  .back-btn{
+    background:none; border:1px solid var(--gold); color:var(--gold-soft); border-radius:6px;
+    padding:6px 16px; font-family:'Inter'; font-size:0.85rem; cursor:pointer; margin-bottom:14px;
+  }
+
+  .surah-frame{
+    position: relative; border: 1px solid var(--gold); border-radius: 4px;
+    padding: 26px 18px 20px; background: linear-gradient(180deg, rgba(201,162,75,0.05), rgba(201,162,75,0));
+  }
+  .corner{ position:absolute; width:24px; height:24px; border: 2px solid var(--gold); opacity:0.9; }
+  .corner.tl{ top:-1px; right:-1px; border-left:none; border-bottom:none; }
+  .corner.tr{ top:-1px; left:-1px; border-right:none; border-bottom:none; }
+  .corner.bl{ bottom:-1px; right:-1px; border-left:none; border-top:none; }
+  .corner.br{ bottom:-1px; left:-1px; border-right:none; border-top:none; }
+
+  .surah-title{ text-align:center; margin-bottom: 20px; }
+  .surah-title .name{ font-family:'Amiri', serif; font-size: 2.2rem; color: var(--gold-soft); }
+  .surah-title .meta{ font-family:'Noto Nastaliq Urdu', serif; font-size: 0.9rem; color: var(--parchment-dim); margin-top:2px; }
+
+  .lang-toggle{ display:flex; justify-content:center; gap: 8px; margin-bottom: 22px; }
+  .lang-toggle button{
+    font-family:'Noto Nastaliq Urdu', serif; background: transparent; border: 1px solid var(--gold);
+    color: var(--gold-soft); padding: 6px 20px; border-radius: 999px; font-size: 1rem; cursor:pointer;
+  }
+  .lang-toggle button.active{ background: var(--gold); color: var(--ink); font-weight:600; }
+
+  .ayah{ margin-bottom: 28px; padding-bottom: 22px; border-bottom: 1px solid rgba(201,162,75,0.25); }
+  .ayah:last-child{ border-bottom:none; }
+  .ayah-num{
+    display:inline-flex; align-items:center; justify-content:center; width: 28px; height:28px;
+    border: 1px solid var(--gold); border-radius: 50%; font-size: 0.75rem; color: var(--gold-soft); float:left;
+  }
+  .words{ display:flex; flex-wrap:wrap; flex-direction: row-reverse; gap: 16px; justify-content:flex-end; margin: 4px 0 14px; clear:both; }
+  .word{ text-align:center; cursor:pointer; min-width: 52px; padding: 4px 2px 6px; border-bottom: 2px solid transparent; }
+  .word:hover, .word.shown{ border-bottom: 2px solid var(--gold); }
+  .word .ar{ font-family:'Amiri', serif; font-size: 1.75rem; color: var(--cream-text); line-height:1.4; }
+  .word .gloss{ font-family:'Noto Nastaliq Urdu', serif; font-size: 0.8rem; color: var(--gold-soft); height:0; overflow:hidden; opacity:0; transition: all .18s ease; margin-top:2px; }
+  .word.shown .gloss{ height:auto; opacity:1; }
+
+  .arabic-line{ font-family:'Amiri', serif; font-size:1.7rem; line-height:2.2; text-align:right; clear:both; margin-bottom:10px; }
+
+  .translation{
+    background: var(--parchment); color: #241A0C; border-radius: 6px; padding: 12px 16px;
+    font-family:'Noto Nastaliq Urdu', serif; font-size: 1.1rem; line-height: 2;
+  }
+  .translation .label{
+    display:inline-block; font-family:'Inter'; font-size: 0.68rem; letter-spacing:0.5px; color: var(--maroon);
+    border: 1px solid var(--maroon); border-radius: 3px; padding: 1px 8px; margin-bottom: 6px;
+  }
+
+  .tafsir-toggle{
+    margin-top: 8px; background:none; border:none; color: var(--maroon); font-family:'Inter'; font-size: 0.78rem;
+    cursor:pointer; padding: 4px 0; display:flex; align-items:center; gap:6px;
+  }
+  .tafsir-toggle::before{ content:'✦'; font-size:0.65rem; }
+  .tafsir-body{
+    font-family:'Noto Nastaliq Urdu', serif; font-size: 1rem; line-height:1.9; color: var(--parchment);
+    background: rgba(139,58,58,0.12); border-right: 3px solid var(--maroon); padding: 10px 14px;
+    border-radius: 4px; margin-top: 8px; display:none;
+  }
+  .tafsir-body.open{ display:block; }
+
+  .status{ text-align:center; padding: 40px 10px; font-family:'Inter'; color: var(--parchment-dim); font-size:0.9rem; }
+  .note{ font-size: 0.72rem; color: #8DA3BB; margin-top: 10px; text-align:center; }
+  footer{ text-align:center; margin-top: 26px; font-size: 0.7rem; color:#7C93AC; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">لفظی</div>
+    <div class="brand-sub">قرآنِ کریم — ترجمہ اور تفسیر</div>
+  </header>
+
+  <div id="listView">
+    <input class="search-box" id="searchBox" placeholder="سورت کا نام تلاش کریں...">
+    <div class="surah-list" id="surahList">
+      <div class="status">فہرست لوڈ ہو رہی ہے...</div>
+    </div>
+  </div>
+
+  <div id="readerView" style="display:none;">
+    <button class="back-btn" id="backBtn">‹ فہرست کی طرف واپس</button>
+    <div class="surah-frame">
+      <div class="corner tl"></div><div class="corner tr"></div>
+      <div class="corner bl"></div><div class="corner br"></div>
+      <div class="surah-title" id="surahTitle"></div>
+      <div class="lang-toggle">
+        <button class="active" data-lang="ur">اردو</button>
+        <button data-lang="ps">پښتو</button>
+      </div>
+      <div id="ayatContainer"><div class="status">لوڈ ہو رہا ہے...</div></div>
+    </div>
+  </div>
+
+  <footer>ہر لفظ پر کلک کریں تاکہ اس کا لفظی معنی نظر آئے (فی الحال سورۃ الفاتحہ میں) · عربی و اردو: AlQuran.Cloud · پشتو ترجمہ: Rowwad Translation Center (quranenc.com) — دونوں مستند و مفت ذرائع</footer>
+</div>
+
+<script>
+const API = "https://api.alquran.cloud/v1";
+const fatihaWordData = [
+  { num:1, words:[["بِسْمِ","کے نام سے"],["اللَّهِ","اللہ"],["الرَّحْمَٰنِ","نہایت مہربان"],["الرَّحِيمِ","رحم فرمانے والا"]],
+    tafsir:"ہر اچھے کام کا آغاز اللہ کے نام سے کرنے کی تعلیم دی گئی ہے، تاکہ کام میں برکت اور خلوصِ نیت پیدا ہو۔" },
+  { num:2, words:[["الْحَمْدُ","تمام تعریف"],["لِلَّهِ","اللہ ہی کے لیے"],["رَبِّ","پروردگار"],["الْعَالَمِينَ","تمام جہانوں کا"]],
+    tafsir:"تعریف کا حق دار صرف اللہ ہے، کیونکہ وہی ہر چیز کا خالق اور پالنے والا ہے۔" },
+  { num:3, words:[["الرَّحْمَٰنِ","نہایت مہربان"],["الرَّحِيمِ","رحم فرمانے والا"]],
+    tafsir:"اللہ کی رحمت کو دہرایا گیا ہے تاکہ بندہ اُس کی رحمت پر بھروسہ کرے، خوف میں مبتلا نہ ہو۔" },
+  { num:4, words:[["مَالِكِ","مالک"],["يَوْمِ","دن کا"],["الدِّينِ","جزا کے"]],
+    tafsir:"قیامت کے دن، جب ہر عمل کا حساب ہوگا، اُس دن کا مکمل اختیار صرف اللہ کے پاس ہے۔" },
+  { num:5, words:[["إِيَّاكَ","تجھی کو"],["نَعْبُدُ","ہم عبادت کرتے ہیں"],["وَإِيَّاكَ","اور تجھی سے"],["نَسْتَعِينُ","ہم مدد مانگتے ہیں"]],
+    tafsir:"عبادت اور مدد صرف اللہ سے مانگنا توحید کی بنیاد ہے۔" },
+  { num:6, words:[["اهْدِنَا","ہمیں دکھا"],["الصِّرَاطَ","راستہ"],["الْمُسْتَقِيمَ","سیدھا"]],
+    tafsir:"سیدھا راستہ وہ ہے جو انبیاء اور نیک لوگوں کا راستہ ہے۔" },
+  { num:7, words:[["صِرَاطَ","راستہ"],["الَّذِينَ","اُن لوگوں کا جن"],["أَنْعَمْتَ","تو نے انعام کیا"],["عَلَيْهِمْ","اُن پر"],["غَيْرِ","نہیں"],["الْمَغْضُوبِ","غضب کیے گئے"],["عَلَيْهِمْ","اُن پر"],["وَلَا","اور نہ"],["الضَّالِّينَ","گمراہ لوگ"]],
+    tafsir:"تین قسم کے لوگوں کا ذکر ہے: انعام یافتہ، غضب کے شکار، اور گمراہ — تاکہ ہم پہلے گروہ میں شامل ہونے کی دعا کریں۔" }
+];
+const fatihaPashto = [
+  "د الله په نوم چې ډېر مهربان، رحم کوونکی دی.",
+  "ټول ستاینې خاص د الله لپاره دي چې د ټولو جهانونو پالونکی دی.",
+  "هغه چې ډېر مهربان، رحم کوونکی دی.",
+  "د بدلې د ورځې خاوند.",
+  "یوازې ستا عبادت کوو او یوازې له تا مرسته غواړو.",
+  "موږ ته سیده لار وښایه.",
+  "د هغو کسانو لار چې تا پرې انعام کړی، نه د هغو چې پر هغوی غضب شوی او نه د ګمراهانو."
+];
+
+let allSurahs = [];
+let currentLang = "ur";
+
+async function loadSurahList(){
+  try{
+    const res = await fetch(`${API}/surah`);
+    const json = await res.json();
+    allSurahs = json.data;
+    renderList(allSurahs);
+  }catch(e){
+    document.getElementById("surahList").innerHTML =
+      `<div class="status">فہرست لوڈ نہیں ہو سکی۔ انٹرنیٹ کنکشن چیک کریں۔</div>`;
+  }
+}
+
+function renderList(list){
+  const el = document.getElementById("surahList");
+  if(list.length === 0){ el.innerHTML = `<div class="status">کوئی سورت نہیں ملی</div>`; return; }
+  el.innerHTML = "";
+  list.forEach(s => {
+    const item = document.createElement("div");
+    item.className = "surah-item";
+    item.innerHTML = `
+      <div class="s-num">${s.number}</div>
+      <div class="s-names">
+        <div class="s-ar">${s.name}</div>
+        <div class="s-meta">${s.englishName} · ${s.englishNameTranslation} · ${s.numberOfAyahs} آیات</div>
+      </div>`;
+    item.addEventListener("click", () => openSurah(s.number));
+    el.appendChild(item);
+  });
+}
+
+document.getElementById("searchBox").addEventListener("input", (e) => {
+  const q = e.target.value.trim().toLowerCase();
+  if(!q){ renderList(allSurahs); return; }
+  const filtered = allSurahs.filter(s =>
+    s.name.includes(q) || s.englishName.toLowerCase().includes(q) || s.englishNameTranslation.toLowerCase().includes(q) || String(s.number) === q
+  );
+  renderList(filtered);
+});
+
+let currentSurahNum = null;
+let currentAyahs = { ar: [], ur: [], ps: [] };
+let psLoaded = false;
+
+async function openSurah(num){
+  currentSurahNum = num;
+  document.getElementById("listView").style.display = "none";
+  document.getElementById("readerView").style.display = "block";
+  document.getElementById("ayatContainer").innerHTML = `<div class="status">لوڈ ہو رہا ہے...</div>`;
+  currentLang = "ur";
+  psLoaded = false;
+  currentAyahs.ps = [];
+  document.querySelectorAll(".lang-toggle button").forEach(b => b.classList.toggle("active", b.dataset.lang === "ur"));
+
+  try{
+    const res = await fetch(`${API}/surah/${num}/editions/quran-uthmani,ur.jalandhry`);
+    const json = await res.json();
+    const [arData, urData] = json.data;
+    currentAyahs.ar = arData.ayahs;
+    currentAyahs.ur = urData.ayahs;
+    renderSurahTitle(arData);
+    renderAyat();
+  }catch(e){
+    document.getElementById("ayatContainer").innerHTML =
+      `<div class="status">ڈیٹا لوڈ نہیں ہو سکا۔ دوبارہ کوشش کریں۔</div>`;
+  }
+}
+
+async function loadPashto(num){
+  try{
+    const res = await fetch(`https://quranenc.com/api/v1/translation/sura/pashto_rwwad/${num}`);
+    const json = await res.json();
+    currentAyahs.ps = json.result.map(r => r.translation);
+    psLoaded = true;
+  }catch(e){
+    currentAyahs.ps = [];
+    psLoaded = true;
+  }
+}
+
+function renderSurahTitle(meta){
+  document.getElementById("surahTitle").innerHTML = `
+    <div class="name">${meta.name}</div>
+    <div class="meta">${meta.englishName} — ${meta.englishNameTranslation} · ${meta.revelationType === "Meccan" ? "مکی" : "مدنی"} سورت · ${meta.numberOfAyahs} آیات</div>`;
+}
+
+function renderAyat(){
+  const container = document.getElementById("ayatContainer");
+  container.innerHTML = "";
+
+  const isFatiha = currentSurahNum === 1;
+
+  currentAyahs.ar.forEach((ayah, idx) => {
+    const div = document.createElement("div");
+    div.className = "ayah";
+    const numSpan = `<div class="ayah-num">${ayah.numberInSurah}</div>`;
+
+    let bodyHTML = "";
+    if(isFatiha){
+      const wd = fatihaWordData[idx];
+      const wordsHTML = wd.words.map(([ar,gloss]) =>
+        `<div class="word"><div class="ar">${ar}</div><div class="gloss">${gloss}</div></div>`
+      ).join("");
+      bodyHTML += `<div class="words">${wordsHTML}</div>`;
+    } else {
+      bodyHTML += `<div class="arabic-line">${ayah.text}</div>`;
+    }
+
+    const urText = currentAyahs.ur[idx] ? currentAyahs.ur[idx].text : "";
+    const label = currentLang === "ur" ? "اردو ترجمہ" : "پښتو ژباړه";
+    let transText;
+    if(currentLang === "ur"){
+      transText = urText;
+    } else if(currentAyahs.ps && currentAyahs.ps[idx]){
+      transText = currentAyahs.ps[idx];
+    } else if(isFatiha){
+      transText = fatihaPashto[idx];
+    } else if(!psLoaded){
+      transText = "پښتو ژباړه لوډېږي...";
+    } else {
+      transText = "پشتو ترجمہ فی الحال دستیاب نہیں ہو سکا۔";
+    }
+
+    bodyHTML += `<div class="translation"><span class="label">${label}</span><br>${transText}</div>`;
+
+    div.innerHTML = numSpan + bodyHTML;
+
+    if(isFatiha){
+      div.querySelectorAll(".word").forEach(w => w.addEventListener("click", () => w.classList.toggle("shown")));
+
+      const tBtn = document.createElement("button");
+      tBtn.className = "tafsir-toggle";
+      tBtn.textContent = "تفسیر دیکھیں";
+      const tBody = document.createElement("div");
+      tBody.className = "tafsir-body";
+      tBody.textContent = fatihaWordData[idx].tafsir;
+      tBtn.addEventListener("click", () => {
+        tBody.classList.toggle("open");
+        tBtn.textContent = tBody.classList.contains("open") ? "تفسیر چھپائیں" : "تفسیر دیکھیں";
+      });
+      div.appendChild(tBtn);
+      div.appendChild(tBody);
+    } else {
+      const note = document.createElement("div");
+      note.className = "note";
+      note.textContent = "تفسیر جلد شامل کی جائے گی";
+      div.appendChild(note);
+    }
+
+    container.appendChild(div);
+  });
+}
+
+document.querySelectorAll(".lang-toggle button").forEach(btn => {
+  btn.addEventListener("click", async () => {
+    document.querySelectorAll(".lang-toggle button").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    currentLang = btn.dataset.lang;
+    if(!currentAyahs.ar.length) return;
+    if(currentLang === "ps" && !psLoaded && currentSurahNum !== 1){
+      renderAyat();
+      await loadPashto(currentSurahNum);
+      renderAyat();
+    } else {
+      renderAyat();
+    }
+  });
+});
+
+document.getElementById("backBtn").addEventListener("click", () => {
+  document.getElementById("readerView").style.display = "none";
+  document.getElementById("listView").style.display = "block";
+});
+
+loadSurahList();
+</script>
+</body>
+</html>
