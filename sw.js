@@ -1,4 +1,4 @@
-const SHELL_CACHE = "lafzi-shell-v2";
+const SHELL_CACHE = "lafzi-shell-v3";
 const API_CACHE = "lafzi-api-v1";
 const SHELL_FILES = ["./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png"];
 
@@ -37,11 +37,19 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // App shell: cache-first
+  // App shell (HTML/manifest): network-first so updates always show when online,
+  // falling back to cache only when offline.
   if (url.origin === self.location.origin) {
     event.respondWith(
-      caches.match(event.request).then((cached) => cached || fetch(event.request))
+      fetch(event.request)
+        .then((response) => {
+          const copy = response.clone();
+          caches.open(SHELL_CACHE).then((cache) => cache.put(event.request, copy));
+          return response;
+        })
+        .catch(() => caches.match(event.request))
     );
   }
 });
+
 
