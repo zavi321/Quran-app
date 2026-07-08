@@ -533,6 +533,23 @@ function resetPlayingButton(){
   currentPlayingBtn = null;
 }
 
+const AUDIO_CACHE_NAME = "lafzi-audio-v1";
+
+async function getAudioBlobUrl(url){
+  try{
+    const cache = await caches.open(AUDIO_CACHE_NAME);
+    let response = await cache.match(url);
+    if(!response){
+      response = await fetch(url);
+      if(response.ok) cache.put(url, response.clone());
+    }
+    const blob = await response.blob();
+    return URL.createObjectURL(blob);
+  }catch(e){
+    return url; // fall back to direct URL if anything goes wrong
+  }
+}
+
 function playRecitation(url, btn){
   if(!btn.dataset.label) btn.dataset.label = btn.textContent;
   if(currentPlayingBtn === btn){
@@ -542,12 +559,15 @@ function playRecitation(url, btn){
   }
   window.speechSynthesis.cancel();
   resetPlayingButton();
-  reciteAudioEl.src = url;
-  reciteAudioEl.play().catch(() => {});
-  btn.classList.add("playing");
-  btn.textContent = "⏸ رک جائیں";
-  currentPlayingBtn = btn;
-  reciteAudioEl.onended = () => resetPlayingButton();
+  btn.textContent = "⏳ لوڈ ہو رہا ہے...";
+  getAudioBlobUrl(url).then(playableUrl => {
+    reciteAudioEl.src = playableUrl;
+    reciteAudioEl.play().catch(() => {});
+    btn.classList.add("playing");
+    btn.textContent = "⏸ رک جائیں";
+    currentPlayingBtn = btn;
+    reciteAudioEl.onended = () => resetPlayingButton();
+  });
 }
 
 let availableVoices = [];
