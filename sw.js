@@ -2,7 +2,7 @@ const SHELL_CACHE = "lafzi-shell-v2";
 const API_CACHE = "lafzi-api-v1";
 const SHELL_FILES = ["./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png"];
 
-const API_HOSTS = ["api.alquran.cloud", "quranenc.com"];
+const API_HOSTS = ["api.alquran.cloud", "quranenc.com", "cdn.islamic.network"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
