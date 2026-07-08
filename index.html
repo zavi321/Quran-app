@@ -420,8 +420,6 @@ function renderAyat(){
     const audioUrl = ayah.number ? `https://cdn.islamic.network/quran/audio/128/ar.alafasy/${ayah.number}.mp3` : null;
     const audioControlsHTML = `<div class="audio-controls">
       ${audioUrl ? `<button class="audio-btn recite-btn">🔊 تلاوت سنیں</button>` : ""}
-      <button class="audio-btn tts-btn">🔊 ترجمہ سنیں</button>
-      <button class="audio-btn voice-cycle-btn" title="آواز بدلیں">🎙 آواز بدلیں</button>
     </div>`;
 
     let bodyHTML = "";
