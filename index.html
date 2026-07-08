@@ -16,18 +16,36 @@
     --gold: #C9A24B; --gold-soft: #E4C777;
     --parchment: #EFE4C8; --parchment-dim: #D9CBA6;
     --maroon: #8B3A3A; --teal: #2F5D62; --cream-text: #F6EFDC;
+    --bg-top: #1A3552; --bg-bottom: #0A1522;
   }
   *{box-sizing:border-box;}
   body{
     margin:0;
-    background: radial-gradient(1200px 800px at 50% -10%, #1A3552 0%, var(--ink) 55%, #0A1522 100%);
+    background: radial-gradient(1200px 800px at 50% -10%, var(--bg-top) 0%, var(--ink) 55%, var(--bg-bottom) 100%);
     min-height:100vh; font-family:'Inter', sans-serif; color: var(--cream-text);
     padding: 20px 12px 60px;
   }
-  .wrap{ max-width: 720px; margin: 0 auto; }
+  .wrap{ max-width: 720px; margin: 0 auto; position: relative; }
   header{ text-align:center; margin-bottom: 18px; }
   .brand{ font-family:'Amiri', serif; font-size: 2rem; color: var(--gold-soft); }
   .brand-sub{ font-family:'Noto Nastaliq Urdu', serif; font-size: 1rem; color: var(--parchment-dim); margin-top:4px; }
+
+  .theme-btn{
+    position:absolute; top:0; left:0; width:38px; height:38px; border-radius:50%;
+    background: rgba(201,162,75,0.12); border:1px solid var(--gold); color: var(--gold-soft);
+    font-size:1.1rem; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  }
+  .theme-panel{
+    position:absolute; top:44px; left:0; z-index:20; background: var(--ink-2); border:1px solid var(--gold);
+    border-radius:10px; padding:10px; display:none; flex-direction:column; gap:8px; min-width:170px;
+  }
+  .theme-panel.open{ display:flex; }
+  .theme-option{
+    display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; cursor:pointer;
+    font-family:'Noto Nastaliq Urdu', serif; font-size:0.85rem; color: var(--cream-text);
+  }
+  .theme-option:hover{ background: rgba(201,162,75,0.1); }
+  .theme-swatch{ width:18px; height:18px; border-radius:50%; border:1px solid var(--gold); flex-shrink:0; }
 
   .search-box{
     width:100%; padding:10px 14px; border-radius:8px; border:1px solid var(--gold);
@@ -115,12 +133,26 @@
 
   .status{ text-align:center; padding: 40px 10px; font-family:'Inter'; color: var(--parchment-dim); font-size:0.9rem; }
   .note{ font-size: 0.72rem; color: #8DA3BB; margin-top: 10px; text-align:center; }
+  .audio-controls{ display:flex; gap:10px; margin-top:10px; flex-wrap:wrap; }
+  .audio-btn{
+    background: rgba(201,162,75,0.12); border:1px solid var(--gold); color: var(--gold-soft);
+    border-radius: 999px; padding: 5px 14px; font-family:'Inter'; font-size: 0.78rem; cursor:pointer;
+  }
+  .audio-btn.playing{ background: var(--gold); color: var(--ink); font-weight:600; }
   footer{ text-align:center; margin-top: 26px; font-size: 0.7rem; color:#7C93AC; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
+    <button class="theme-btn" id="themeBtn" title="رنگ بدلیں">🎨</button>
+    <div class="theme-panel" id="themePanel">
+      <div class="theme-option" data-theme="gold"><span class="theme-swatch" style="background:#0F2035"></span> سنہری رات</div>
+      <div class="theme-option" data-theme="emerald"><span class="theme-swatch" style="background:#0F2E24"></span> زمردی</div>
+      <div class="theme-option" data-theme="maroon"><span class="theme-swatch" style="background:#2E1015"></span> عنابی رات</div>
+      <div class="theme-option" data-theme="royal"><span class="theme-swatch" style="background:#0B1A3A"></span> نیلگوں</div>
+      <div class="theme-option" data-theme="black"><span class="theme-swatch" style="background:#000000"></span> سیاہ (OLED)</div>
+    </div>
     <div class="brand">تبیان القرآن</div>
     <div class="brand-sub">تبیان القرآن فی تفسیر القرآن</div>
   </header>
@@ -146,8 +178,9 @@
     </div>
   </div>
 
-  <footer>ہر لفظ پر کلک کریں تاکہ اس کا لفظی معنی نظر آئے (فی الحال سورۃ الفاتحہ میں) · عربی و اردو: AlQuran.Cloud · پشتو ترجمہ: Rowwad Translation Center (quranenc.com) — دونوں مستند و مفت ذرائع</footer>
+  <footer>ہر لفظ پر کلک کریں تاکہ اس کا لفظی معنی نظر آئے (فی الحال سورۃ الفاتحہ میں) · عربی و اردو: AlQuran.Cloud · پشتو ترجمہ: Rowwad Translation Center (quranenc.com) — دونوں مستند و مفت ذرائع · تلاوت: قاری مشاری راشد العفاسی</footer>
 </div>
+<audio id="reciteAudio" preload="none"></audio>
 
 <script>
 const API = "https://api.alquran.cloud/v1";
@@ -243,14 +276,17 @@ async function openSurah(num){
   currentLang = "ur";
   psLoaded = false;
   currentAyahs.ps = [];
+  document.getElementById("reciteAudio").pause();
+  if("speechSynthesis" in window) window.speechSynthesis.cancel();
   document.querySelectorAll(".lang-toggle button").forEach(b => b.classList.toggle("active", b.dataset.lang === "ur"));
 
   try{
-    const res = await fetch(`${API}/surah/${num}/editions/quran-uthmani,ur.jalandhry`);
+    const res = await fetch(`${API}/surah/${num}/editions/quran-uthmani,ur.jalandhry,ar.alafasy`);
     const json = await res.json();
-    const [arData, urData] = json.data;
+    const [arData, urData, audioData] = json.data;
     currentAyahs.ar = arData.ayahs;
     currentAyahs.ur = urData.ayahs;
+    currentAyahs.audio = audioData.ayahs;
     renderSurahTitle(arData);
     renderAyat();
   }catch(e){
@@ -288,6 +324,12 @@ function renderAyat(){
     div.className = "ayah";
     const numSpan = `<div class="ayah-num">${ayah.numberInSurah}</div>`;
 
+    const audioUrl = currentAyahs.audio && currentAyahs.audio[idx] ? currentAyahs.audio[idx].audio : null;
+    const audioControlsHTML = `<div class="audio-controls">
+      ${audioUrl ? `<button class="audio-btn recite-btn">🔊 تلاوت سنیں</button>` : ""}
+      <button class="audio-btn tts-btn">🔊 ترجمہ سنیں</button>
+    </div>`;
+
     let bodyHTML = "";
     if(isFatiha){
       const wd = fatihaWordData[idx];
@@ -315,11 +357,21 @@ function renderAyat(){
     }
 
     bodyHTML += `<div class="translation"><span class="label">${label}</span><br>${transText}</div>`;
+    bodyHTML += audioControlsHTML;
 
     div.innerHTML = numSpan + bodyHTML;
 
     if(isFatiha){
       div.querySelectorAll(".word").forEach(w => w.addEventListener("click", () => w.classList.toggle("shown")));
+    }
+
+    const reciteBtn = div.querySelector(".recite-btn");
+    if(reciteBtn){
+      reciteBtn.addEventListener("click", () => playRecitation(audioUrl, reciteBtn));
+    }
+    const ttsBtn = div.querySelector(".tts-btn");
+    if(ttsBtn){
+      ttsBtn.addEventListener("click", () => speakTranslation(transText, currentLang, ttsBtn));
     }
 
     const tafsirKey = `${currentSurahNum}:${ayah.numberInSurah}`;
@@ -370,7 +422,105 @@ document.getElementById("backBtn").addEventListener("click", () => {
   document.getElementById("listView").style.display = "block";
 });
 
+let currentPlayingBtn = null;
+const reciteAudioEl = document.getElementById("reciteAudio");
+
+function resetPlayingButton(){
+  if(currentPlayingBtn){
+    currentPlayingBtn.classList.remove("playing");
+    currentPlayingBtn.textContent = currentPlayingBtn.dataset.label || currentPlayingBtn.textContent;
+  }
+  currentPlayingBtn = null;
+}
+
+function playRecitation(url, btn){
+  if(!btn.dataset.label) btn.dataset.label = btn.textContent;
+  if(currentPlayingBtn === btn){
+    reciteAudioEl.pause();
+    resetPlayingButton();
+    return;
+  }
+  window.speechSynthesis.cancel();
+  resetPlayingButton();
+  reciteAudioEl.src = url;
+  reciteAudioEl.play().catch(() => {});
+  btn.classList.add("playing");
+  btn.textContent = "⏸ رک جائیں";
+  currentPlayingBtn = btn;
+  reciteAudioEl.onended = () => resetPlayingButton();
+}
+
+function speakTranslation(text, lang, btn){
+  if(!("speechSynthesis" in window)){
+    btn.textContent = "یہ فون سپورٹ نہیں کرتا";
+    return;
+  }
+  if(!btn.dataset.label) btn.dataset.label = btn.textContent;
+  if(currentPlayingBtn === btn && window.speechSynthesis.speaking){
+    window.speechSynthesis.cancel();
+    resetPlayingButton();
+    return;
+  }
+  reciteAudioEl.pause();
+  window.speechSynthesis.cancel();
+  resetPlayingButton();
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = lang === "ur" ? "ur-PK" : "ps-AF";
+  utter.rate = 0.9;
+  utter.onend = () => resetPlayingButton();
+  utter.onerror = () => resetPlayingButton();
+  window.speechSynthesis.speak(utter);
+  btn.classList.add("playing");
+  btn.textContent = "⏸ رک جائیں";
+  currentPlayingBtn = btn;
+}
+
 loadSurahList();
+
+// Theme switching
+const THEMES = {
+  gold:    { ink:"#0F2035", ink2:"#16304C", bgTop:"#1A3552", bgBottom:"#0A1522", gold:"#C9A24B", goldSoft:"#E4C777" },
+  emerald: { ink:"#0F2E24", ink2:"#15422F", bgTop:"#1D4A34", bgBottom:"#081A12", gold:"#C9A24B", goldSoft:"#E4C777" },
+  maroon:  { ink:"#2E1015", ink2:"#3E161C", bgTop:"#4A1D22", bgBottom:"#160709", gold:"#D9AF63", goldSoft:"#EAC98A" },
+  royal:   { ink:"#0B1A3A", ink2:"#122A57", bgTop:"#1B3A78", bgBottom:"#050D22", gold:"#C0B283", goldSoft:"#E0D6AE" },
+  black:   { ink:"#000000", ink2:"#141414", bgTop:"#1A1A1A", bgBottom:"#000000", gold:"#C9A24B", goldSoft:"#E4C777" }
+};
+
+function applyTheme(name){
+  const t = THEMES[name] || THEMES.gold;
+  const root = document.documentElement.style;
+  root.setProperty("--ink", t.ink);
+  root.setProperty("--ink-2", t.ink2);
+  root.setProperty("--bg-top", t.bgTop);
+  root.setProperty("--bg-bottom", t.bgBottom);
+  root.setProperty("--gold", t.gold);
+  root.setProperty("--gold-soft", t.goldSoft);
+  try{ localStorage.setItem("lafzi-theme", name); }catch(e){}
+}
+
+document.getElementById("themeBtn").addEventListener("click", () => {
+  document.getElementById("themePanel").classList.toggle("open");
+});
+
+document.querySelectorAll(".theme-option").forEach(opt => {
+  opt.addEventListener("click", () => {
+    applyTheme(opt.dataset.theme);
+    document.getElementById("themePanel").classList.remove("open");
+  });
+});
+
+document.addEventListener("click", (e) => {
+  const panel = document.getElementById("themePanel");
+  const btn = document.getElementById("themeBtn");
+  if(panel.classList.contains("open") && !panel.contains(e.target) && e.target !== btn){
+    panel.classList.remove("open");
+  }
+});
+
+try{
+  const saved = localStorage.getItem("lafzi-theme");
+  if(saved) applyTheme(saved);
+}catch(e){}
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
