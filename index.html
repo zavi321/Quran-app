@@ -281,12 +281,11 @@ async function openSurah(num){
   document.querySelectorAll(".lang-toggle button").forEach(b => b.classList.toggle("active", b.dataset.lang === "ur"));
 
   try{
-    const res = await fetch(`${API}/surah/${num}/editions/quran-uthmani,ur.jalandhry,ar.alafasy`);
+    const res = await fetch(`${API}/surah/${num}/editions/quran-uthmani,ur.jalandhry`);
     const json = await res.json();
-    const [arData, urData, audioData] = json.data;
+    const [arData, urData] = json.data;
     currentAyahs.ar = arData.ayahs;
     currentAyahs.ur = urData.ayahs;
-    currentAyahs.audio = audioData.ayahs;
     renderSurahTitle(arData);
     renderAyat();
   }catch(e){
@@ -324,10 +323,11 @@ function renderAyat(){
     div.className = "ayah";
     const numSpan = `<div class="ayah-num">${ayah.numberInSurah}</div>`;
 
-    const audioUrl = currentAyahs.audio && currentAyahs.audio[idx] ? currentAyahs.audio[idx].audio : null;
+    const audioUrl = ayah.number ? `https://cdn.islamic.network/quran/audio/128/ar.alafasy/${ayah.number}.mp3` : null;
     const audioControlsHTML = `<div class="audio-controls">
       ${audioUrl ? `<button class="audio-btn recite-btn">🔊 تلاوت سنیں</button>` : ""}
       <button class="audio-btn tts-btn">🔊 ترجمہ سنیں</button>
+      <button class="audio-btn voice-cycle-btn" title="آواز بدلیں">🎙 آواز بدلیں</button>
     </div>`;
 
     let bodyHTML = "";
@@ -372,6 +372,14 @@ function renderAyat(){
     const ttsBtn = div.querySelector(".tts-btn");
     if(ttsBtn){
       ttsBtn.addEventListener("click", () => speakTranslation(transText, currentLang, ttsBtn));
+    }
+    const voiceCycleBtn = div.querySelector(".voice-cycle-btn");
+    if(voiceCycleBtn){
+      voiceCycleBtn.addEventListener("click", () => {
+        cycleVoice(currentLang === "ur" ? "ur" : "ps");
+        voiceCycleBtn.textContent = "✓ اگلی آواز منتخب — دوبارہ سنیں";
+        setTimeout(() => { voiceCycleBtn.textContent = "🎙 آواز بدلیں"; }, 1500);
+      });
     }
 
     const tafsirKey = `${currentSurahNum}:${ayah.numberInSurah}`;
@@ -450,6 +458,32 @@ function playRecitation(url, btn){
   reciteAudioEl.onended = () => resetPlayingButton();
 }
 
+let availableVoices = [];
+function loadVoices(){
+  availableVoices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+}
+if("speechSynthesis" in window){
+  loadVoices();
+  window.speechSynthesis.onvoiceschanged = loadVoices;
+}
+
+function pickVoice(langPrefix){
+  const matches = availableVoices.filter(v => v.lang && v.lang.toLowerCase().startsWith(langPrefix));
+  if(matches.length === 0) return null;
+  const maleHint = matches.find(v => /male|مرد|man/i.test(v.name) && !/female|زن|woman/i.test(v.name));
+  if(maleHint) return maleHint;
+  const savedIdx = parseInt(localStorage.getItem("lafzi-voice-" + langPrefix) || "0", 10);
+  return matches[savedIdx % matches.length];
+}
+
+function cycleVoice(langPrefix){
+  const matches = availableVoices.filter(v => v.lang && v.lang.toLowerCase().startsWith(langPrefix));
+  if(matches.length <= 1) return;
+  let idx = parseInt(localStorage.getItem("lafzi-voice-" + langPrefix) || "0", 10);
+  idx = (idx + 1) % matches.length;
+  try{ localStorage.setItem("lafzi-voice-" + langPrefix, idx); }catch(e){}
+}
+
 function speakTranslation(text, lang, btn){
   if(!("speechSynthesis" in window)){
     btn.textContent = "یہ فون سپورٹ نہیں کرتا";
@@ -464,7 +498,10 @@ function speakTranslation(text, lang, btn){
   reciteAudioEl.pause();
   window.speechSynthesis.cancel();
   resetPlayingButton();
+  const langPrefix = lang === "ur" ? "ur" : "ps";
   const utter = new SpeechSynthesisUtterance(text);
+  const voice = pickVoice(langPrefix);
+  if(voice) utter.voice = voice;
   utter.lang = lang === "ur" ? "ur-PK" : "ps-AF";
   utter.rate = 0.9;
   utter.onend = () => resetPlayingButton();
