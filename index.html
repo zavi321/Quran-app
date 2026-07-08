@@ -83,7 +83,7 @@
     display:inline-flex; align-items:center; justify-content:center; width: 28px; height:28px;
     border: 1px solid var(--gold); border-radius: 50%; font-size: 0.75rem; color: var(--gold-soft); float:left;
   }
-  .words{ display:flex; flex-wrap:wrap; flex-direction: row-reverse; gap: 16px; justify-content:flex-end; margin: 4px 0 14px; clear:both; }
+  .words{ display:flex; flex-wrap:wrap; gap: 16px; justify-content:flex-start; margin: 4px 0 14px; clear:both; }
   .word{ text-align:center; cursor:pointer; min-width: 52px; padding: 4px 2px 6px; border-bottom: 2px solid transparent; }
   .word:hover, .word.shown{ border-bottom: 2px solid var(--gold); }
   .word .ar{ font-family:'Amiri', serif; font-size: 1.75rem; color: var(--cream-text); line-height:1.4; }
@@ -176,6 +176,18 @@ const fatihaPashto = [
   "موږ ته سیده لار وښایه.",
   "د هغو کسانو لار چې تا پرې انعام کړی، نه د هغو چې پر هغوی غضب شوی او نه د ګمراهانو."
 ];
+
+// General tafsir lookup, keyed "surah:ayah" — added gradually, verified against mainstream tafsir consensus.
+const tafsirData = {
+  "2:1": "یہ حروفِ مقطعات ہیں (الف، لام، میم) جن کا حتمی مفہوم اللہ ہی بہتر جانتا ہے۔ قرآن میں ایسے کئی حروف بعض سورتوں کے آغاز میں آتے ہیں۔",
+  "2:2": "یہ وہ کتاب (قرآن) ہے جس میں کوئی شک نہیں، اور یہ متقین (پرہیزگاروں) کے لیے مکمل ہدایت ہے۔",
+  "2:3": "متقین کی پہلی صفات: غیب (اللہ، فرشتے، آخرت وغیرہ) پر ایمان لانا، نماز قائم کرنا، اور اللہ کے دیے ہوئے رزق میں سے خرچ کرنا۔",
+  "2:4": "دوسری صفت: اس قرآن پر اور پہلے نازل شدہ کتابوں (تورات، انجیل وغیرہ) پر ایمان لانا، اور آخرت پر پختہ یقین رکھنا۔",
+  "2:5": "یہی وہ لوگ ہیں جو اپنے رب کی طرف سے ہدایت پر ہیں، اور یہی کامیاب ہونے والے ہیں۔",
+  "2:6": "جن لوگوں نے کفر کا راستہ اپنا لیا، اُن کے لیے برابر ہے چاہے آپ انہیں ڈرائیں یا نہ ڈرائیں — وہ ایمان نہیں لائیں گے۔",
+  "2:7": "اللہ نے اُن کے دلوں اور کانوں پر (اُن کے مسلسل انکار کے سبب) مہر لگا دی ہے، اور اُن کی آنکھوں پر پردہ ہے، اور اُن کے لیے بڑا عذاب ہے۔",
+  "2:8": "کچھ لوگ (منافقین) کہتے ہیں کہ ہم اللہ اور یومِ آخرت پر ایمان لائے، حالانکہ درحقیقت وہ مومن نہیں۔"
+};
 
 let allSurahs = [];
 let currentLang = "ur";
@@ -308,13 +320,18 @@ function renderAyat(){
 
     if(isFatiha){
       div.querySelectorAll(".word").forEach(w => w.addEventListener("click", () => w.classList.toggle("shown")));
+    }
 
+    const tafsirKey = `${currentSurahNum}:${ayah.numberInSurah}`;
+    const tafsirText = isFatiha ? fatihaWordData[idx].tafsir : tafsirData[tafsirKey];
+
+    if(tafsirText){
       const tBtn = document.createElement("button");
       tBtn.className = "tafsir-toggle";
       tBtn.textContent = "تفسیر دیکھیں";
       const tBody = document.createElement("div");
       tBody.className = "tafsir-body";
-      tBody.textContent = fatihaWordData[idx].tafsir;
+      tBody.textContent = tafsirText;
       tBtn.addEventListener("click", () => {
         tBody.classList.toggle("open");
         tBtn.textContent = tBody.classList.contains("open") ? "تفسیر چھپائیں" : "تفسیر دیکھیں";
