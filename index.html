@@ -607,15 +607,26 @@ const AUDIO_BITRATES = [128, 64, 192, 48, 40, 32];
 
 async function fetchAyahAudioBlob(ayahNumber, reciter){
   const cache = await caches.open(AUDIO_CACHE_NAME);
-  for(const bitrate of AUDIO_BITRATES){
-    const url = `https://cdn.islamic.network/quran/audio/${bitrate}/${reciter}/${ayahNumber}.mp3`;
+  let urls = [];
+  try{
+    const metaRes = await fetch(`${API}/ayah/${ayahNumber}/${reciter}`);
+    const metaJson = await metaRes.json();
+    if(metaJson && metaJson.data){
+      if(metaJson.data.audio) urls.push(metaJson.data.audio);
+      if(Array.isArray(metaJson.data.audioSecondary)) urls.push(...metaJson.data.audioSecondary);
+    }
+  }catch(e){ /* fall through to guessed URLs below */ }
+  if(urls.length === 0){
+    for(const bitrate of AUDIO_BITRATES){
+      urls.push(`https://cdn.islamic.network/quran/audio/${bitrate}/${reciter}/${ayahNumber}.mp3`);
+    }
+  }
+  for(const url of urls){
     try{
       let response = await cache.match(url);
       if(!response){
         response = await fetch(url);
         if(!response.ok) continue;
-        const contentType = response.headers.get("content-type") || "";
-        if(!contentType.startsWith("audio")) continue;
         cache.put(url, response.clone());
       }
       const blob = await response.blob();
