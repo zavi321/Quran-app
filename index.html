@@ -487,7 +487,7 @@ function renderAyat(){
     div.id = `ayah-card-${ayah.numberInSurah}`;
     const numSpan = `<div class="ayah-num">${ayah.numberInSurah}</div>`;
 
-    const audioUrl = ayah.number ? `https://cdn.islamic.network/quran/audio/128/${getSelectedReciter()}/${ayah.number}.mp3` : null;
+    const audioUrl = ayah.number ? ayah.number : null;
     const audioControlsHTML = `<div class="audio-controls">
       ${audioUrl ? `<button class="audio-btn recite-btn">🔊 تلاوت سنیں</button>` : ""}
     </div>`;
@@ -603,23 +603,29 @@ function resetPlayingButton(){
 }
 
 const AUDIO_CACHE_NAME = "lafzi-audio-v1";
+const AUDIO_BITRATES = [128, 64, 192, 48, 40, 32];
 
-async function getAudioBlobUrl(url){
-  try{
-    const cache = await caches.open(AUDIO_CACHE_NAME);
-    let response = await cache.match(url);
-    if(!response){
-      response = await fetch(url);
-      if(response.ok) cache.put(url, response.clone());
-    }
-    const blob = await response.blob();
-    return URL.createObjectURL(blob);
-  }catch(e){
-    return url; // fall back to direct URL if anything goes wrong
+async function fetchAyahAudioBlob(ayahNumber, reciter){
+  const cache = await caches.open(AUDIO_CACHE_NAME);
+  for(const bitrate of AUDIO_BITRATES){
+    const url = `https://cdn.islamic.network/quran/audio/${bitrate}/${reciter}/${ayahNumber}.mp3`;
+    try{
+      let response = await cache.match(url);
+      if(!response){
+        response = await fetch(url);
+        if(!response.ok) continue;
+        const contentType = response.headers.get("content-type") || "";
+        if(!contentType.startsWith("audio")) continue;
+        cache.put(url, response.clone());
+      }
+      const blob = await response.blob();
+      if(blob.size > 0) return blob;
+    }catch(e){ continue; }
   }
+  return null;
 }
 
-function playRecitation(url, btn){
+function playRecitation(ayahNumber, btn){
   if(!btn.dataset.label) btn.dataset.label = btn.textContent;
   if(currentPlayingBtn === btn){
     reciteAudioEl.pause();
@@ -629,8 +635,13 @@ function playRecitation(url, btn){
   window.speechSynthesis.cancel();
   resetPlayingButton();
   btn.textContent = "⏳ لوڈ ہو رہا ہے...";
-  getAudioBlobUrl(url).then(playableUrl => {
-    reciteAudioEl.src = playableUrl;
+  fetchAyahAudioBlob(ayahNumber, getSelectedReciter()).then(blob => {
+    if(!blob){
+      btn.textContent = "⚠️ اس قاری کی آڈیو نہیں ملی";
+      setTimeout(() => { btn.textContent = btn.dataset.label; }, 2200);
+      return;
+    }
+    reciteAudioEl.src = URL.createObjectURL(blob);
     reciteAudioEl.play().catch(() => {});
     btn.classList.add("playing");
     btn.textContent = "⏸ رک جائیں";
