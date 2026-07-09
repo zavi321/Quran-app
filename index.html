@@ -612,9 +612,8 @@ async function fetchAyahAudioBlob(ayahNumber, reciter){
   try{
     const metaRes = await fetch(`${API}/ayah/${ayahNumber}/${reciter}`);
     const metaJson = await metaRes.json();
-    if(metaJson && metaJson.data){
-      if(metaJson.data.audio) urls.push(metaJson.data.audio);
-      if(Array.isArray(metaJson.data.audioSecondary)) urls.push(...metaJson.data.audioSecondary);
+    if(metaJson && metaJson.data && Array.isArray(metaJson.data.audioSecondary)){
+      urls.push(...metaJson.data.audioSecondary);
     }
   }catch(e){ /* fall through to guessed URLs below */ }
   if(urls.length === 0){
