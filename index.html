@@ -43,6 +43,8 @@
   .theme-panel.open{ display:flex; }
   .donate-btn{ left:auto; right:0; }
   .donate-panel{ left:auto; right:0; text-align:center; padding:14px; min-width:220px; }
+  .reciter-btn{ top:44px; left:0; }
+  .reciter-panel{ top:88px; left:0; }
   .donate-title{ font-family:'Noto Nastaliq Urdu', serif; font-size:0.95rem; color: var(--gold-soft); margin-bottom:6px; }
   .donate-note{ font-family:'Noto Nastaliq Urdu', serif; font-size:0.78rem; color: var(--parchment-dim); margin-bottom:10px; line-height:1.6; }
   .donate-account{ background: rgba(201,162,75,0.1); border:1px solid var(--gold); border-radius:8px; padding:8px; margin-bottom:8px; }
@@ -174,6 +176,12 @@
   <header>
     <button class="theme-btn" id="themeBtn" title="رنگ بدلیں">🎨</button>
     <button class="theme-btn donate-btn" id="donateBtn" title="عطیہ کریں">🤲</button>
+    <button class="theme-btn reciter-btn" id="reciterBtn" title="قاری منتخب کریں">🎙️</button>
+    <div class="theme-panel reciter-panel" id="reciterPanel">
+      <div class="theme-option" data-reciter="ar.alafasy">مشاری راشد العفاسی</div>
+      <div class="theme-option" data-reciter="ar.husary">محمود خلیل الحصری</div>
+      <div class="theme-option" data-reciter="ar.abdurrahmaansudais">عبدالرحمٰن السدیس</div>
+    </div>
     <div class="theme-panel donate-panel" id="donatePanel">
       <div class="donate-title">اس ایپ کو جاری رکھنے میں مدد کریں</div>
       <div class="donate-note">یہ ایپ مکمل مفت ہے۔ اگر آپ چاہیں تو عطیہ دے سکتے ہیں — جزاک اللہ خیر</div>
@@ -479,7 +487,7 @@ function renderAyat(){
     div.id = `ayah-card-${ayah.numberInSurah}`;
     const numSpan = `<div class="ayah-num">${ayah.numberInSurah}</div>`;
 
-    const audioUrl = ayah.number ? `https://cdn.islamic.network/quran/audio/128/ar.alafasy/${ayah.number}.mp3` : null;
+    const audioUrl = ayah.number ? `https://cdn.islamic.network/quran/audio/128/${getSelectedReciter()}/${ayah.number}.mp3` : null;
     const audioControlsHTML = `<div class="audio-controls">
       ${audioUrl ? `<button class="audio-btn recite-btn">🔊 تلاوت سنیں</button>` : ""}
     </div>`;
@@ -733,12 +741,32 @@ function applyTheme(name){
 
 document.getElementById("themeBtn").addEventListener("click", () => {
   document.getElementById("donatePanel").classList.remove("open");
+  document.getElementById("reciterPanel").classList.remove("open");
   document.getElementById("themePanel").classList.toggle("open");
 });
 
 document.getElementById("donateBtn").addEventListener("click", () => {
   document.getElementById("themePanel").classList.remove("open");
+  document.getElementById("reciterPanel").classList.remove("open");
   document.getElementById("donatePanel").classList.toggle("open");
+});
+
+function getSelectedReciter(){
+  try{ return localStorage.getItem("lafzi-reciter") || "ar.alafasy"; }catch(e){ return "ar.alafasy"; }
+}
+
+document.getElementById("reciterBtn").addEventListener("click", () => {
+  document.getElementById("themePanel").classList.remove("open");
+  document.getElementById("donatePanel").classList.remove("open");
+  document.getElementById("reciterPanel").classList.toggle("open");
+});
+
+document.querySelectorAll("#reciterPanel .theme-option").forEach(opt => {
+  opt.addEventListener("click", () => {
+    try{ localStorage.setItem("lafzi-reciter", opt.dataset.reciter); }catch(e){}
+    document.getElementById("reciterPanel").classList.remove("open");
+    if(currentAyahs.ar.length) renderAyat();
+  });
 });
 
 document.getElementById("donateCopyBtn").addEventListener("click", () => {
@@ -769,6 +797,11 @@ document.addEventListener("click", (e) => {
   const dBtn = document.getElementById("donateBtn");
   if(dPanel.classList.contains("open") && !dPanel.contains(e.target) && e.target !== dBtn){
     dPanel.classList.remove("open");
+  }
+  const rPanel = document.getElementById("reciterPanel");
+  const rBtn = document.getElementById("reciterBtn");
+  if(rPanel.classList.contains("open") && !rPanel.contains(e.target) && e.target !== rBtn){
+    rPanel.classList.remove("open");
   }
 });
 
