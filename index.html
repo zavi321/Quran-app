@@ -40,6 +40,14 @@
     border-radius:10px; padding:10px; display:none; flex-direction:column; gap:8px; min-width:170px;
   }
   .theme-panel.open{ display:flex; }
+  .donate-btn{ left:auto; right:0; }
+  .donate-panel{ left:auto; right:0; text-align:center; padding:14px; min-width:220px; }
+  .donate-title{ font-family:'Noto Nastaliq Urdu', serif; font-size:0.95rem; color: var(--gold-soft); margin-bottom:6px; }
+  .donate-note{ font-family:'Noto Nastaliq Urdu', serif; font-size:0.78rem; color: var(--parchment-dim); margin-bottom:10px; line-height:1.6; }
+  .donate-account{ background: rgba(201,162,75,0.1); border:1px solid var(--gold); border-radius:8px; padding:8px; margin-bottom:8px; }
+  .donate-label{ display:block; font-family:'Inter'; font-size:0.7rem; color: var(--gold); }
+  .donate-number{ display:block; font-family:'Inter'; font-size:1.1rem; letter-spacing:1px; color: var(--cream-text); margin-top:2px; direction:ltr; }
+  .donate-copy-btn{ background: var(--gold); color: var(--ink); border:none; border-radius:6px; padding:7px 14px; font-family:'Inter'; font-size:0.8rem; cursor:pointer; width:100%; }
   .theme-option{
     display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; cursor:pointer;
     font-family:'Noto Nastaliq Urdu', serif; font-size:0.85rem; color: var(--cream-text);
@@ -164,6 +172,16 @@
 <div class="wrap">
   <header>
     <button class="theme-btn" id="themeBtn" title="رنگ بدلیں">🎨</button>
+    <button class="theme-btn donate-btn" id="donateBtn" title="عطیہ کریں">🤲</button>
+    <div class="theme-panel donate-panel" id="donatePanel">
+      <div class="donate-title">اس ایپ کو جاری رکھنے میں مدد کریں</div>
+      <div class="donate-note">یہ ایپ مکمل مفت ہے۔ اگر آپ چاہیں تو عطیہ دے سکتے ہیں — جزاک اللہ خیر</div>
+      <div class="donate-account">
+        <span class="donate-label">EasyPaisa</span>
+        <span class="donate-number" id="donateNumber">0341-2565659</span>
+      </div>
+      <button class="donate-copy-btn" id="donateCopyBtn">نمبر کاپی کریں</button>
+    </div>
     <div class="theme-panel" id="themePanel">
       <div class="theme-option" data-theme="gold"><span class="theme-swatch" style="background:#0F2035"></span> سنہری رات</div>
       <div class="theme-option" data-theme="emerald"><span class="theme-swatch" style="background:#0F2E24"></span> زمردی</div>
@@ -703,7 +721,24 @@ function applyTheme(name){
 }
 
 document.getElementById("themeBtn").addEventListener("click", () => {
+  document.getElementById("donatePanel").classList.remove("open");
   document.getElementById("themePanel").classList.toggle("open");
+});
+
+document.getElementById("donateBtn").addEventListener("click", () => {
+  document.getElementById("themePanel").classList.remove("open");
+  document.getElementById("donatePanel").classList.toggle("open");
+});
+
+document.getElementById("donateCopyBtn").addEventListener("click", () => {
+  const number = document.getElementById("donateNumber").textContent.replace(/-/g, "");
+  const btn = document.getElementById("donateCopyBtn");
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(number).then(() => {
+      btn.textContent = "✓ کاپی ہو گیا";
+      setTimeout(() => { btn.textContent = "نمبر کاپی کریں"; }, 1800);
+    }).catch(() => { btn.textContent = "کاپی نہیں ہو سکا"; });
+  }
 });
 
 document.querySelectorAll(".theme-option").forEach(opt => {
@@ -718,6 +753,11 @@ document.addEventListener("click", (e) => {
   const btn = document.getElementById("themeBtn");
   if(panel.classList.contains("open") && !panel.contains(e.target) && e.target !== btn){
     panel.classList.remove("open");
+  }
+  const dPanel = document.getElementById("donatePanel");
+  const dBtn = document.getElementById("donateBtn");
+  if(dPanel.classList.contains("open") && !dPanel.contains(e.target) && e.target !== dBtn){
+    dPanel.classList.remove("open");
   }
 });
 
