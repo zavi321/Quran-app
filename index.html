@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; media-src 'self' blob: https://cdn.islamic.network; connect-src 'self' https://api.alquran.cloud https://quranenc.com https://cdn.islamic.network; base-uri 'self'; form-action 'none'; frame-ancestors 'none';">
 <meta name="theme-color" content="#0F2035">
 <link rel="manifest" href="./manifest.json">
 <link rel="icon" href="./icon-192.png">
@@ -262,6 +263,16 @@
 
 <script>
 const API = "https://api.alquran.cloud/v1";
+
+function esc(str){
+  if(str === null || str === undefined) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
 const fatihaWordData = [
   { num:1, words:[["بِسْمِ","کے نام سے"],["اللَّهِ","اللہ"],["الرَّحْمَٰنِ","نہایت مہربان"],["الرَّحِيمِ","رحم فرمانے والا"]],
     tafsir:"ہر اچھے کام کا آغاز اللہ کے نام سے کرنے کی تعلیم دی گئی ہے، تاکہ کام میں برکت اور خلوصِ نیت پیدا ہو۔" },
@@ -379,8 +390,8 @@ function renderList(list){
     item.innerHTML = `
       <div class="s-num">${s.number}</div>
       <div class="s-names">
-        <div class="s-ar">${s.name}</div>
-        <div class="s-meta">${s.englishName} · ${s.englishNameTranslation} · ${s.numberOfAyahs} آیات</div>
+        <div class="s-ar">${esc(s.name)}</div>
+        <div class="s-meta">${esc(s.englishName)} · ${esc(s.englishNameTranslation)} · ${esc(s.numberOfAyahs)} آیات</div>
       </div>`;
     item.addEventListener("click", () => openSurah(s.number));
     el.appendChild(item);
@@ -445,8 +456,8 @@ function toEasternNumeral(n){
 
 function renderSurahTitle(meta){
   document.getElementById("surahTitle").innerHTML = `
-    <div class="name">${meta.name}</div>
-    <div class="meta">${meta.englishName} — ${meta.englishNameTranslation}</div>`;
+    <div class="name">${esc(meta.name)}</div>
+    <div class="meta">${esc(meta.englishName)} — ${esc(meta.englishNameTranslation)}</div>`;
   const revType = meta.revelationType === "Meccan" ? "مکیۃ" : "مدنیۃ";
   document.getElementById("surahBanner").innerHTML = `
     <span>آیاتہا ${toEasternNumeral(meta.numberOfAyahs)}</span>
@@ -482,7 +493,7 @@ function renderAyat(){
       ).join("");
       bodyHTML += `<div class="words">${wordsHTML}<span class="ayah-end-mark" style="align-self:center;">${toEasternNumeral(ayah.numberInSurah)}</span></div>`;
     } else {
-      bodyHTML += `<div class="mushaf-line">${ayah.text} <span class="ayah-end-mark">${toEasternNumeral(ayah.numberInSurah)}</span></div>`;
+      bodyHTML += `<div class="mushaf-line">${esc(ayah.text)} <span class="ayah-end-mark">${toEasternNumeral(ayah.numberInSurah)}</span></div>`;
     }
 
     const urText = currentAyahs.ur[idx] ? currentAyahs.ur[idx].text : "";
@@ -500,7 +511,7 @@ function renderAyat(){
       transText = "پشتو ترجمہ فی الحال دستیاب نہیں ہو سکا۔";
     }
 
-    bodyHTML += `<div class="translation"><span class="label">${label}</span><br>${transText}</div>`;
+    bodyHTML += `<div class="translation"><span class="label">${label}</span><br>${esc(transText)}</div>`;
     bodyHTML += audioControlsHTML;
 
     div.innerHTML = numSpan + bodyHTML;
