@@ -606,8 +606,7 @@ function resetPlayingButton(){
 const AUDIO_CACHE_NAME = "lafzi-audio-v1";
 const AUDIO_BITRATES = [128, 64, 192, 48, 40, 32];
 
-async function fetchAyahAudioBlob(ayahNumber, reciter){
-  const cache = await caches.open(AUDIO_CACHE_NAME);
+async function getAyahAudioUrls(ayahNumber, reciter){
   let urls = [];
   try{
     const metaRes = await fetch(`${API}/ayah/${ayahNumber}/${reciter}`);
@@ -615,28 +614,27 @@ async function fetchAyahAudioBlob(ayahNumber, reciter){
     if(metaJson && metaJson.data && Array.isArray(metaJson.data.audioSecondary)){
       urls.push(...metaJson.data.audioSecondary);
     }
-  }catch(e){ /* fall through to guessed URLs below */ }
+  }catch(e){ /* ignore, fall back below */ }
   if(urls.length === 0){
     for(const bitrate of AUDIO_BITRATES){
       urls.push(`https://cdn.islamic.network/quran/audio/${bitrate}/${reciter}/${ayahNumber}.mp3`);
     }
   }
-  for(const url of urls){
-    try{
-      let response = await cache.match(url);
-      if(!response){
-        response = await fetch(url);
-        if(!response.ok) continue;
-        cache.put(url, response.clone());
-      }
-      const blob = await response.blob();
-      if(blob.size > 0) return blob;
-    }catch(e){ continue; }
-  }
-  return null;
+  return urls;
 }
 
-function playRecitation(ayahNumber, btn){
+// Best-effort background caching for offline reuse — never blocks playback if it fails (e.g. no CORS headers).
+async function cacheAudioInBackground(url){
+  try{
+    const cache = await caches.open(AUDIO_CACHE_NAME);
+    const already = await cache.match(url);
+    if(already) return;
+    const response = await fetch(url, { mode: "cors" });
+    if(response.ok) cache.put(url, response);
+  }catch(e){ /* offline caching unavailable for this file — playback still works online */ }
+}
+
+async function playRecitation(ayahNumber, btn){
   if(!btn.dataset.label) btn.dataset.label = btn.textContent;
   if(currentPlayingBtn === btn){
     reciteAudioEl.pause();
@@ -646,19 +644,42 @@ function playRecitation(ayahNumber, btn){
   window.speechSynthesis.cancel();
   resetPlayingButton();
   btn.textContent = "⏳ لوڈ ہو رہا ہے...";
-  fetchAyahAudioBlob(ayahNumber, getSelectedReciter()).then(blob => {
-    if(!blob){
-      btn.textContent = "⚠️ اس قاری کی آڈیو نہیں ملی";
-      setTimeout(() => { btn.textContent = btn.dataset.label; }, 2200);
-      return;
+
+  const reciter = getSelectedReciter();
+
+  // First: check if we already have this ayah cached (works offline).
+  try{
+    const cache = await caches.open(AUDIO_CACHE_NAME);
+    const urls = await getAyahAudioUrls(ayahNumber, reciter);
+    for(const url of urls){
+      const cached = await cache.match(url);
+      if(cached){
+        const blob = await cached.blob();
+        reciteAudioEl.src = URL.createObjectURL(blob);
+        startPlayback(btn);
+        return;
+      }
     }
-    reciteAudioEl.src = URL.createObjectURL(blob);
-    reciteAudioEl.play().catch(() => {});
-    btn.classList.add("playing");
-    btn.textContent = "⏸ رک جائیں";
-    currentPlayingBtn = btn;
-    reciteAudioEl.onended = () => resetPlayingButton();
+    // Not cached — play directly from network (no CORS needed for playback) and cache quietly in background.
+    const playUrl = urls[0];
+    reciteAudioEl.src = playUrl;
+    startPlayback(btn);
+    cacheAudioInBackground(playUrl);
+  }catch(e){
+    btn.textContent = "⚠️ اس قاری کی آڈیو نہیں ملی";
+    setTimeout(() => { btn.textContent = btn.dataset.label; }, 2200);
+  }
+}
+
+function startPlayback(btn){
+  reciteAudioEl.play().catch(() => {
+    btn.textContent = "⚠️ اس قاری کی آڈیو نہیں ملی";
+    setTimeout(() => { btn.textContent = btn.dataset.label; }, 2200);
   });
+  btn.classList.add("playing");
+  btn.textContent = "⏸ رک جائیں";
+  currentPlayingBtn = btn;
+  reciteAudioEl.onended = () => resetPlayingButton();
 }
 
 let availableVoices = [];
