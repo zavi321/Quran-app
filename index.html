@@ -259,7 +259,7 @@
 
   <div id="listView">
     <button class="bookmarks-toggle-btn" id="bookmarksToggleBtn">⭐ میری پسندیدہ آیات</button>
-    <button class="bookmarks-toggle-btn" id="downloadAllBtn">📥 مکمل قرآن آف لائن ڈاؤن لوڈ کریں</button>
+    <button class="bookmarks-toggle-btn" id="downloadAllBtn">📥 مکمل قرآن + تلاوت آف لائن ڈاؤن لوڈ کریں</button>
     <div class="download-status" id="downloadStatus"></div>
     <div class="bookmarks-panel" id="bookmarksPanel"></div>
     <input class="search-box" id="searchBox" placeholder="سورت کا نام تلاش کریں...">
@@ -321,6 +321,7 @@
         <span class="full-surah-label">🔊 پوری سورت سنیں:</span>
         <button class="audio-btn full-surah-btn" data-reciter="noreen">قاری نورین 🔗</button>
         <button class="audio-btn full-surah-btn" data-reciter="sadaqat">قاری صداقت علی 🔗</button>
+        <button class="audio-btn cdn-full-surah-btn" id="cdnFullSurahBtn">🔊 پوری سورت (منتخب قاری)</button>
       </div>
       <div class="lang-toggle">
         <button class="active" data-lang="ur">اردو</button>
@@ -556,6 +557,41 @@ function renderSurahTitle(meta){
     <span class="divider">﴿</span>
     <span>سورۃ نمبر ${toEasternNumeral(meta.number)}</span>`;
 }
+
+function buildFullSurahCdnUrl(reciter, surahNumber){
+  return `https://cdn.islamic.network/quran/audio-surah/128/${reciter}/${surahNumber}.mp3`;
+}
+
+document.getElementById("cdnFullSurahBtn").addEventListener("click", async () => {
+  const btn = document.getElementById("cdnFullSurahBtn");
+  if(!btn.dataset.label) btn.dataset.label = btn.textContent;
+  if(currentPlayingBtn === btn){
+    reciteAudioEl.pause();
+    resetPlayingButton();
+    return;
+  }
+  window.speechSynthesis.cancel();
+  resetPlayingButton();
+  const url = buildFullSurahCdnUrl(getSelectedReciter(), currentSurahNum);
+  try{
+    const cache = await caches.open(AUDIO_CACHE_NAME);
+    const cached = await cache.match(url);
+    if(cached){
+      const blob = await cached.blob();
+      reciteAudioEl.src = URL.createObjectURL(blob);
+    } else {
+      reciteAudioEl.src = url;
+      cacheAudioInBackground(url);
+    }
+    startPlayback(btn);
+  }catch(e){
+    reciteAudioEl.src = url;
+    startPlayback(btn);
+  }
+});
+  noreen:  "https://archive.org/details/noreen-mohamed-siddiq",
+  sadaqat: "https://archive.org/details/Sadaqat-Ali-kz"
+};
 
 const FULL_SURAH_PAGES = {
   noreen:  "https://archive.org/details/noreen-mohamed-siddiq",
@@ -953,30 +989,54 @@ async function downloadEntireQuranForOffline(){
   const btn = document.getElementById("downloadAllBtn");
   const statusEl = document.getElementById("downloadStatus");
   btn.disabled = true;
-  btn.textContent = "⏳ ڈاؤن لوڈ ہو رہا ہے...";
-  statusEl.innerHTML = `<div class="download-progress-bar"><div class="download-progress-fill" id="downloadProgressFill"></div></div>`;
+  statusEl.innerHTML = `<div class="download-progress-bar"><div class="download-progress-fill" id="downloadProgressFill"></div></div>
+    <div id="downloadProgressText"></div>`;
   const fill = document.getElementById("downloadProgressFill");
+  const progressText = document.getElementById("downloadProgressText");
 
-  let done = 0;
-  const total = 114;
-  let failCount = 0;
-
+  // Phase 1: text (Arabic + Urdu + Pashto) for all 114 surahs
+  btn.textContent = "⏳ متن ڈاؤن لوڈ ہو رہا ہے...";
+  let allAyahs = []; // collect {number, surah} for phase 2
   for(let n = 1; n <= 114; n++){
     try{
-      await fetch(`${API}/surah/${n}/editions/quran-uthmani,ur.jalandhry`);
-    }catch(e){ failCount++; }
-    try{
-      await fetch(`https://quranenc.com/api/v1/translation/sura/pashto_rwwad/${n}`);
-    }catch(e){ /* Pashto is a bonus; don't count as failure */ }
-    done++;
-    const pct = Math.round((done/total)*100);
+      const res = await fetch(`${API}/surah/${n}/editions/quran-uthmani,ur.jalandhry`);
+      const json = await res.json();
+      if(json && json.data && json.data[0] && json.data[0].ayahs){
+        json.data[0].ayahs.forEach(a => allAyahs.push(a.number));
+      }
+    }catch(e){ /* continue */ }
+    try{ await fetch(`https://quranenc.com/api/v1/translation/sura/pashto_rwwad/${n}`); }catch(e){}
+    const pct = Math.round((n/114)*50); // text = first 50% of overall progress
     fill.style.width = pct + "%";
+    progressText.textContent = `متن: سورت ${n} از ۱۱۴`;
+  }
+
+  // Phase 2: audio for every ayah (selected reciter)
+  btn.textContent = "⏳ تلاوت ڈاؤن لوڈ ہو رہی ہے...";
+  const reciter = getSelectedReciter();
+  const totalAyahCount = allAyahs.length || 6236;
+  let audioDone = 0;
+  for(const ayahNumber of allAyahs){
+    try{
+      const urls = await getAyahAudioUrls(ayahNumber, reciter);
+      const url = urls[0];
+      const cache = await caches.open(AUDIO_CACHE_NAME);
+      const already = await cache.match(url);
+      if(!already){
+        const response = await fetch(url, { mode: "cors" });
+        if(response.ok) await cache.put(url, response);
+      }
+    }catch(e){ /* skip this ayah's audio, continue with the rest */ }
+    audioDone++;
+    const pct = 50 + Math.round((audioDone/totalAyahCount)*50);
+    fill.style.width = pct + "%";
+    progressText.textContent = `تلاوت: آیت ${audioDone} از ${totalAyahCount}`;
   }
 
   try{ localStorage.setItem("lafzi-full-download-done", "1"); }catch(e){}
   btn.disabled = false;
-  btn.textContent = failCount === 0 ? "✅ مکمل قرآن محفوظ ہو گیا" : `⚠️ زیادہ تر محفوظ ہوا (${total - failCount}/${total})`;
-  statusEl.innerHTML = "اب آپ بغیر انٹرنیٹ کے بھی مکمل قرآن پڑھ سکتے ہیں";
+  btn.textContent = "✅ مکمل قرآن (متن + تلاوت) محفوظ ہو گیا";
+  progressText.textContent = "اب آپ بغیر انٹرنیٹ کے بھی مکمل قرآن پڑھ اور سن سکتے ہیں";
 }
 
 try{
@@ -984,6 +1044,38 @@ try{
     document.getElementById("downloadAllBtn").textContent = "✅ مکمل قرآن محفوظ ہے (دوبارہ اپڈیٹ کریں)";
   }
 }catch(e){}
+
+document.getElementById("downloadAudioBtn").addEventListener("click", downloadEntireQuranAudioForOffline);
+
+async function downloadEntireQuranAudioForOffline(){
+  const proceed = confirm("مکمل قرآن کی تلاوت ڈاؤن لوڈ کرنے میں تقریباً 200-400 MB انٹرنیٹ ڈیٹا خرچ ہوگا اور کچھ وقت لگے گا۔ کیا آپ Wi-Fi پر ہیں اور جاری رکھنا چاہتے ہیں؟");
+  if(!proceed) return;
+
+  const btn = document.getElementById("downloadAudioBtn");
+  const statusEl = document.getElementById("downloadAudioStatus");
+  btn.disabled = true;
+  btn.textContent = "⏳ آڈیو ڈاؤن لوڈ ہو رہی ہے...";
+  statusEl.innerHTML = `<div class="download-progress-bar"><div class="download-progress-fill" id="downloadAudioProgressFill"></div></div>`;
+  const fill = document.getElementById("downloadAudioProgressFill");
+
+  const reciter = getSelectedReciter();
+  let done = 0;
+  const total = 114;
+  let failCount = 0;
+
+  for(let n = 1; n <= 114; n++){
+    try{
+      await cacheAudioInBackground(buildFullSurahCdnUrl(reciter, n));
+    }catch(e){ failCount++; }
+    done++;
+    fill.style.width = Math.round((done/total)*100) + "%";
+    statusEl.querySelector(".download-progress-bar") && (statusEl.title = `${done}/${total}`);
+  }
+
+  btn.disabled = false;
+  btn.textContent = failCount === 0 ? "✅ مکمل تلاوت محفوظ ہو گئی" : `⚠️ زیادہ تر محفوظ ہوئی (${total - failCount}/${total})`;
+  statusEl.innerHTML = "اب منتخب قاری کی مکمل تلاوت (پوری سورت والے بٹن سے) بغیر انٹرنیٹ کے چلے گی";
+}
 
 loadSurahList();
 
