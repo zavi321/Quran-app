@@ -293,8 +293,8 @@
       <div class="surah-banner" id="surahBanner"></div>
       <div class="full-surah-audio" id="fullSurahAudio">
         <span class="full-surah-label">🔊 پوری سورت سنیں:</span>
-        <button class="audio-btn full-surah-btn" data-reciter="noreen">قاری نورین</button>
-        <button class="audio-btn full-surah-btn" data-reciter="sadaqat">قاری صداقت علی</button>
+        <button class="audio-btn full-surah-btn" data-reciter="noreen">قاری نورین 🔗</button>
+        <button class="audio-btn full-surah-btn" data-reciter="sadaqat">قاری صداقت علی 🔗</button>
       </div>
       <div class="lang-toggle">
         <button class="active" data-lang="ur">اردو</button>
@@ -304,7 +304,9 @@
     </div>
   </div>
 
-  <footer>ہر لفظ پر کلک کریں تاکہ اس کا لفظی معنی نظر آئے (فی الحال سورۃ الفاتحہ میں) · عربی و اردو: AlQuran.Cloud · پشتو ترجمہ: Rowwad Translation Center (quranenc.com) — دونوں مستند و مفت ذرائع · تلاوت: قاری مشاری راشد العفاسی</footer>
+  <footer>ہر لفظ پر کلک کریں تاکہ اس کا لفظی معنی نظر آئے (فی الحال سورۃ الفاتحہ میں) · عربی و اردو: AlQuran.Cloud · پشتو ترجمہ: Rowwad Translation Center (quranenc.com) — دونوں مستند و مفت ذرائع · تلاوت: قاری مشاری راشد العفاسی
+    <div style="margin-top:10px;"><a href="./about.html" style="color:var(--gold); margin:0 8px;">ہمارے بارے میں</a> | <a href="./contact.html" style="color:var(--gold); margin:0 8px;">رابطہ کریں</a></div>
+  </footer>
 </div>
 <audio id="reciteAudio" preload="none"></audio>
 
@@ -531,49 +533,14 @@ function renderSurahTitle(meta){
     <span>سورۃ نمبر ${toEasternNumeral(meta.number)}</span>`;
 }
 
-const FULL_SURAH_IDENTIFIERS = {
-  noreen:  "noreen-mohamed-siddiq",
-  sadaqat: "Sadaqat-Ali-kz"
+const FULL_SURAH_PAGES = {
+  noreen:  "https://archive.org/details/noreen-mohamed-siddiq",
+  sadaqat: "https://archive.org/details/Sadaqat-Ali-kz"
 };
-const fullSurahFileCache = {};
-
-async function getFullSurahUrl(reciterKey, surahNumber){
-  const identifier = FULL_SURAH_IDENTIFIERS[reciterKey];
-  if(!fullSurahFileCache[identifier]){
-    const res = await fetch(`https://archive.org/metadata/${identifier}`);
-    const json = await res.json();
-    fullSurahFileCache[identifier] = (json.files || []).filter(f => /\.(mp3|ogg)$/i.test(f.name));
-  }
-  const padded = String(surahNumber).padStart(3, "0");
-  const file = fullSurahFileCache[identifier].find(f => f.name.startsWith(padded));
-  if(!file) return null;
-  return `https://archive.org/download/${identifier}/${encodeURIComponent(file.name)}`;
-}
 
 document.querySelectorAll(".full-surah-btn").forEach(btn => {
-  btn.addEventListener("click", async () => {
-    if(!btn.dataset.label) btn.dataset.label = btn.textContent;
-    if(currentPlayingBtn === btn){
-      reciteAudioEl.pause();
-      resetPlayingButton();
-      return;
-    }
-    window.speechSynthesis.cancel();
-    resetPlayingButton();
-    btn.textContent = "⏳ لوڈ ہو رہا ہے...";
-    try{
-      const url = await getFullSurahUrl(btn.dataset.reciter, currentSurahNum);
-      if(!url){
-        btn.textContent = "⚠️ اس قاری کی آڈیو نہیں ملی";
-        setTimeout(() => { btn.textContent = btn.dataset.label; }, 2200);
-        return;
-      }
-      reciteAudioEl.src = url;
-      startPlayback(btn);
-    }catch(e){
-      btn.textContent = "⚠️ اس قاری کی آڈیو نہیں ملی";
-      setTimeout(() => { btn.textContent = btn.dataset.label; }, 2200);
-    }
+  btn.addEventListener("click", () => {
+    window.open(FULL_SURAH_PAGES[btn.dataset.reciter], "_blank", "noopener");
   });
 });
 
