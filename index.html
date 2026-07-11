@@ -64,6 +64,19 @@
     font-size:1rem; margin: 16px 0;
   }
   .search-box::placeholder{ color: var(--parchment-dim); }
+  .bookmarks-toggle-btn{
+    width:100%; margin-top:16px; background: rgba(201,162,75,0.1); border:1px solid var(--gold); color: var(--gold-soft);
+    border-radius:8px; padding:10px; font-family:'Noto Nastaliq Urdu', serif; font-size:1rem; cursor:pointer;
+  }
+  .bookmarks-panel{ display:none; flex-direction:column; gap:8px; margin-top:12px; }
+  .bookmarks-panel.open{ display:flex; }
+  .bookmark-item{
+    display:flex; justify-content:space-between; align-items:center; padding:10px 14px;
+    border:1px solid rgba(201,162,75,0.35); border-radius:8px; cursor:pointer;
+    font-family:'Noto Nastaliq Urdu', serif; color: var(--cream-text);
+  }
+  .bookmark-item .remove-bookmark{ color: var(--maroon); background:none; border:none; font-size:1.2rem; cursor:pointer; }
+  .bookmarks-empty{ text-align:center; color: var(--parchment-dim); font-family:'Inter'; font-size:0.85rem; padding:16px; }
 
   .surah-list{ display:flex; flex-direction:column; gap:8px; }
   .surah-item{
@@ -133,6 +146,10 @@
   .ayah-num{
     display:inline-flex; align-items:center; justify-content:center; width: 28px; height:28px;
     border: 1px solid var(--gold); border-radius: 50%; font-size: 0.75rem; color: var(--gold-soft); float:left;
+  }
+  .bookmark-btn{
+    float:left; margin-left:8px; background:none; border:none; font-size:1.3rem; cursor:pointer; color: var(--gold);
+    line-height:28px;
   }
   .words{ display:flex; flex-wrap:wrap; gap: 16px; justify-content:flex-start; margin: 4px 0 14px; clear:both; }
   .word{ text-align:center; cursor:pointer; min-width: 52px; padding: 4px 2px 6px; border-bottom: 2px solid transparent; }
@@ -209,6 +226,8 @@
   </header>
 
   <div id="listView">
+    <button class="bookmarks-toggle-btn" id="bookmarksToggleBtn">⭐ میری پسندیدہ آیات</button>
+    <div class="bookmarks-panel" id="bookmarksPanel"></div>
     <input class="search-box" id="searchBox" placeholder="سورت کا نام تلاش کریں...">
     <div class="surah-list" id="surahList">
       <div class="status">فہرست لوڈ ہو رہی ہے...</div>
@@ -280,6 +299,17 @@
 <audio id="reciteAudio" preload="none"></audio>
 
 <script>
+function getBookmarks(){
+  try{ return JSON.parse(localStorage.getItem("lafzi-bookmarks") || "[]"); }catch(e){ return []; }
+}
+function toggleBookmark(key){
+  let list = getBookmarks();
+  if(list.includes(key)) list = list.filter(k => k !== key);
+  else list.push(key);
+  try{ localStorage.setItem("lafzi-bookmarks", JSON.stringify(list)); }catch(e){}
+  return list.includes(key);
+}
+
 const API = "https://api.alquran.cloud/v1";
 
 function esc(str){
@@ -429,7 +459,7 @@ let currentSurahNum = null;
 let currentAyahs = { ar: [], ur: [], ps: [] };
 let psLoaded = false;
 
-async function openSurah(num){
+async function openSurah(num, jumpToAyah){
   currentSurahNum = num;
   document.getElementById("listView").style.display = "none";
   document.getElementById("readerView").style.display = "block";
@@ -449,6 +479,12 @@ async function openSurah(num){
     currentAyahs.ur = urData.ayahs;
     renderSurahTitle(arData);
     renderAyat();
+    if(jumpToAyah){
+      setTimeout(() => {
+        const target = document.getElementById(`ayah-card-${jumpToAyah}`);
+        if(target) target.scrollIntoView({behavior:"smooth", block:"center"});
+      }, 150);
+    }
   }catch(e){
     document.getElementById("ayatContainer").innerHTML =
       `<div class="status">ڈیٹا لوڈ نہیں ہو سکا۔ دوبارہ کوشش کریں۔</div>`;
@@ -517,6 +553,9 @@ function renderAyat(){
     div.className = "ayah";
     div.id = `ayah-card-${ayah.numberInSurah}`;
     const numSpan = `<div class="ayah-num">${ayah.numberInSurah}</div>`;
+    const bookmarkKey = `${currentSurahNum}:${ayah.numberInSurah}`;
+    const isBookmarked = getBookmarks().includes(bookmarkKey);
+    const bookmarkBtnHTML = `<button class="bookmark-btn ${isBookmarked ? "active" : ""}" data-key="${bookmarkKey}" title="پسندیدہ">${isBookmarked ? "⭐" : "☆"}</button>`;
 
     const audioUrl = ayah.number ? ayah.number : null;
     const audioControlsHTML = `<div class="audio-controls">
@@ -553,9 +592,16 @@ function renderAyat(){
     bodyHTML += `<div class="translation"><span class="label">${label}</span><br>${esc(transText)}</div>`;
     bodyHTML += audioControlsHTML;
 
-    div.innerHTML = numSpan + bodyHTML;
+    div.innerHTML = numSpan + bookmarkBtnHTML + bodyHTML;
 
     div.querySelectorAll(".word").forEach(w => w.addEventListener("click", () => w.classList.toggle("shown")));
+
+    const bookmarkBtn = div.querySelector(".bookmark-btn");
+    bookmarkBtn.addEventListener("click", () => {
+      const nowBookmarked = toggleBookmark(bookmarkBtn.dataset.key);
+      bookmarkBtn.textContent = nowBookmarked ? "⭐" : "☆";
+      bookmarkBtn.classList.toggle("active", nowBookmarked);
+    });
 
     const reciteBtn = div.querySelector(".recite-btn");
     if(reciteBtn){
@@ -785,6 +831,40 @@ function speakTranslation(text, lang, btn){
   btn.classList.add("playing");
   btn.textContent = "⏸ رک جائیں";
   currentPlayingBtn = btn;
+}
+
+document.getElementById("bookmarksToggleBtn").addEventListener("click", () => {
+  const panel = document.getElementById("bookmarksPanel");
+  panel.classList.toggle("open");
+  if(panel.classList.contains("open")) renderBookmarksPanel();
+});
+
+function renderBookmarksPanel(){
+  const panel = document.getElementById("bookmarksPanel");
+  const bookmarks = getBookmarks();
+  if(bookmarks.length === 0){
+    panel.innerHTML = `<div class="bookmarks-empty">ابھی کوئی آیت پسندیدہ میں شامل نہیں — کسی آیت کے پاس ☆ پر ٹیپ کریں</div>`;
+    return;
+  }
+  panel.innerHTML = "";
+  bookmarks.forEach(key => {
+    const [surahNum, ayahNum] = key.split(":").map(Number);
+    const surahInfo = allSurahs.find(s => s.number === surahNum);
+    const surahName = surahInfo ? surahInfo.name : `سورت ${surahNum}`;
+    const item = document.createElement("div");
+    item.className = "bookmark-item";
+    item.innerHTML = `<span>${esc(surahName)} — آیت ${toEasternNumeral(ayahNum)}</span><button class="remove-bookmark">✕</button>`;
+    item.querySelector("span").addEventListener("click", () => {
+      document.getElementById("bookmarksPanel").classList.remove("open");
+      openSurah(surahNum, ayahNum);
+    });
+    item.querySelector(".remove-bookmark").addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleBookmark(key);
+      renderBookmarksPanel();
+    });
+    panel.appendChild(item);
+  });
 }
 
 loadSurahList();
