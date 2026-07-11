@@ -77,6 +77,14 @@
   }
   .bookmark-item .remove-bookmark{ color: var(--maroon); background:none; border:none; font-size:1.2rem; cursor:pointer; }
   .bookmarks-empty{ text-align:center; color: var(--parchment-dim); font-family:'Inter'; font-size:0.85rem; padding:16px; }
+  .verse-search-results{ display:flex; flex-direction:column; gap:8px; margin-bottom:12px; }
+  .verse-result-item{
+    padding:12px 14px; border:1px solid rgba(201,162,75,0.35); border-radius:8px; cursor:pointer;
+  }
+  .verse-result-item:hover{ background: rgba(201,162,75,0.08); }
+  .verse-result-item .vr-ref{ font-family:'Inter'; font-size:0.7rem; color: var(--gold); margin-bottom:4px; }
+  .verse-result-item .vr-text{ font-family:'Noto Nastaliq Urdu', serif; font-size:0.95rem; color: var(--cream-text); line-height:1.7; }
+  .verse-search-status{ text-align:center; color: var(--parchment-dim); font-family:'Inter'; font-size:0.85rem; padding:10px; }
 
   .surah-list{ display:flex; flex-direction:column; gap:8px; }
   .surah-item{
@@ -229,6 +237,8 @@
     <button class="bookmarks-toggle-btn" id="bookmarksToggleBtn">⭐ میری پسندیدہ آیات</button>
     <div class="bookmarks-panel" id="bookmarksPanel"></div>
     <input class="search-box" id="searchBox" placeholder="سورت کا نام تلاش کریں...">
+    <input class="search-box" id="verseSearchBox" placeholder="آیت میں کوئی لفظ تلاش کریں (اردو یا عربی)...">
+    <div class="verse-search-results" id="verseSearchResults"></div>
     <div class="surah-list" id="surahList">
       <div class="status">فہرست لوڈ ہو رہی ہے...</div>
     </div>
@@ -865,6 +875,60 @@ function renderBookmarksPanel(){
     });
     panel.appendChild(item);
   });
+}
+
+let verseSearchTimeout = null;
+document.getElementById("verseSearchBox").addEventListener("input", (e) => {
+  const q = e.target.value.trim();
+  clearTimeout(verseSearchTimeout);
+  if(q.length < 2){
+    document.getElementById("verseSearchResults").innerHTML = "";
+    document.getElementById("surahList").style.display = "";
+    return;
+  }
+  document.getElementById("surahList").style.display = "none";
+  document.getElementById("verseSearchResults").innerHTML = `<div class="verse-search-status">تلاش ہو رہی ہے...</div>`;
+  verseSearchTimeout = setTimeout(() => runVerseSearch(q), 500);
+});
+
+function isArabicText(str){
+  return /[\u0600-\u06FF]/.test(str);
+}
+
+async function runVerseSearch(query){
+  const edition = isArabicText(query) ? "quran-uthmani" : "ur.jalandhry";
+  const resultsEl = document.getElementById("verseSearchResults");
+  try{
+    const res = await fetch(`${API}/search/${encodeURIComponent(query)}/all/${edition}`);
+    const json = await res.json();
+    const matches = (json && json.data && json.data.matches) ? json.data.matches : [];
+    if(matches.length === 0){
+      resultsEl.innerHTML = `<div class="verse-search-status">کوئی نتیجہ نہیں ملا</div>`;
+      return;
+    }
+    resultsEl.innerHTML = "";
+    matches.slice(0, 30).forEach(m => {
+      const item = document.createElement("div");
+      item.className = "verse-result-item";
+      item.innerHTML = `<div class="vr-ref">${esc(m.surah.name)} — آیت ${toEasternNumeral(m.numberInSurah)}</div>
+        <div class="vr-text">${esc(m.text)}</div>`;
+      item.addEventListener("click", () => {
+        document.getElementById("verseSearchBox").value = "";
+        document.getElementById("verseSearchResults").innerHTML = "";
+        document.getElementById("surahList").style.display = "";
+        openSurah(m.surah.number, m.numberInSurah);
+      });
+      resultsEl.appendChild(item);
+    });
+    if(matches.length > 30){
+      const note = document.createElement("div");
+      note.className = "verse-search-status";
+      note.textContent = `مزید ${matches.length - 30} نتائج موجود ہیں — تلاش کو مزید مخصوص کریں`;
+      resultsEl.appendChild(note);
+    }
+  }catch(e){
+    resultsEl.innerHTML = `<div class="verse-search-status">تلاش ناکام ہوئی، انٹرنیٹ کنکشن چیک کریں</div>`;
+  }
 }
 
 loadSurahList();
