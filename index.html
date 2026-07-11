@@ -20,6 +20,12 @@
     --bg-top: #1A3552; --bg-bottom: #0A1522;
   }
   *{box-sizing:border-box;}
+  .top-bar{
+    text-align:center; padding:8px 10px; background: rgba(0,0,0,0.25); font-family:'Inter';
+    font-size:0.78rem; border-bottom:1px solid rgba(201,162,75,0.3);
+  }
+  .top-bar a{ color: var(--gold-soft); text-decoration:none; }
+  .top-bar-sep{ color: var(--gold); margin:0 8px; opacity:0.6; }
   body{
     margin:0;
     background: radial-gradient(1200px 800px at 50% -10%, var(--bg-top) 0%, var(--ink) 55%, var(--bg-bottom) 100%);
@@ -49,6 +55,10 @@
   .donate-note{ font-family:'Noto Nastaliq Urdu', serif; font-size:0.78rem; color: var(--parchment-dim); margin-bottom:10px; line-height:1.6; }
   .donate-account{ background: rgba(201,162,75,0.1); border:1px solid var(--gold); border-radius:8px; padding:8px; margin-bottom:8px; }
   .donate-label{ display:block; font-family:'Inter'; font-size:0.7rem; color: var(--gold); }
+  .pay-icon{
+    display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px;
+    background:#5EBB46; color:#fff; border-radius:50%; font-size:0.62rem; font-weight:bold; margin-left:4px;
+  }
   .donate-number{ display:block; font-family:'Inter'; font-size:1.1rem; letter-spacing:1px; color: var(--cream-text); margin-top:2px; direction:ltr; }
   .donate-copy-btn{ background: var(--gold); color: var(--ink); border:none; border-radius:6px; padding:7px 14px; font-family:'Inter'; font-size:0.8rem; cursor:pointer; width:100%; }
   .theme-option{
@@ -202,6 +212,11 @@
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7682021160431826" crossorigin="anonymous"></script>
 </head>
 <body>
+<div class="top-bar">
+  <a href="./about.html">ہمارے بارے میں</a>
+  <span class="top-bar-sep">|</span>
+  <a href="./contact.html">رابطہ کریں</a>
+</div>
 <div class="wrap">
   <header>
     <button class="theme-btn" id="themeBtn" title="رنگ بدلیں">🎨</button>
@@ -216,7 +231,7 @@
       <div class="donate-title">اس ایپ کو جاری رکھنے میں مدد کریں</div>
       <div class="donate-note">یہ ایپ مکمل مفت ہے۔ اگر آپ چاہیں تو عطیہ دے سکتے ہیں — جزاک اللہ خیر</div>
       <div class="donate-account">
-        <span class="donate-label">EasyPaisa</span>
+        <span class="donate-label"><span class="pay-icon">₨</span> EasyPaisa</span>
         <span class="donate-number" id="donateNumber">0341-2565659</span>
       </div>
       <button class="donate-copy-btn" id="donateCopyBtn">نمبر کاپی کریں</button>
@@ -304,9 +319,7 @@
     </div>
   </div>
 
-  <footer>ہر لفظ پر کلک کریں تاکہ اس کا لفظی معنی نظر آئے (فی الحال سورۃ الفاتحہ میں) · عربی و اردو: AlQuran.Cloud · پشتو ترجمہ: Rowwad Translation Center (quranenc.com) — دونوں مستند و مفت ذرائع · تلاوت: قاری مشاری راشد العفاسی
-    <div style="margin-top:10px;"><a href="./about.html" style="color:var(--gold); margin:0 8px;">ہمارے بارے میں</a> | <a href="./contact.html" style="color:var(--gold); margin:0 8px;">رابطہ کریں</a></div>
-  </footer>
+  <footer>ہر لفظ پر کلک کریں تاکہ اس کا لفظی معنی نظر آئے (فی الحال سورۃ الفاتحہ میں) · عربی و اردو: AlQuran.Cloud · پشتو ترجمہ: Rowwad Translation Center (quranenc.com) — دونوں مستند و مفت ذرائع · تلاوت: قاری مشاری راشد العفاسی</footer>
 </div>
 <audio id="reciteAudio" preload="none"></audio>
 
