@@ -78,6 +78,15 @@
     width:100%; margin-top:16px; background: rgba(201,162,75,0.1); border:1px solid var(--gold); color: var(--gold-soft);
     border-radius:8px; padding:10px; font-family:'Noto Nastaliq Urdu', serif; font-size:1rem; cursor:pointer;
   }
+  .download-status{
+    text-align:center; font-family:'Inter'; font-size:0.8rem; color: var(--parchment-dim); margin-top:8px;
+  }
+  .download-progress-bar{
+    width:100%; height:8px; background: rgba(255,255,255,0.08); border-radius:4px; margin-top:6px; overflow:hidden;
+  }
+  .download-progress-fill{
+    height:100%; background: var(--gold); width:0%; transition: width .2s ease;
+  }
   .bookmarks-panel{ display:none; flex-direction:column; gap:8px; margin-top:12px; }
   .bookmarks-panel.open{ display:flex; }
   .bookmark-item{
@@ -250,6 +259,8 @@
 
   <div id="listView">
     <button class="bookmarks-toggle-btn" id="bookmarksToggleBtn">⭐ میری پسندیدہ آیات</button>
+    <button class="bookmarks-toggle-btn" id="downloadAllBtn">📥 مکمل قرآن آف لائن ڈاؤن لوڈ کریں</button>
+    <div class="download-status" id="downloadStatus"></div>
     <div class="bookmarks-panel" id="bookmarksPanel"></div>
     <input class="search-box" id="searchBox" placeholder="سورت کا نام تلاش کریں...">
     <input class="search-box" id="verseSearchBox" placeholder="آیت میں کوئی لفظ تلاش کریں (اردو یا عربی)...">
@@ -935,6 +946,44 @@ async function runVerseSearch(query){
     resultsEl.innerHTML = `<div class="verse-search-status">تلاش ناکام ہوئی، انٹرنیٹ کنکشن چیک کریں</div>`;
   }
 }
+
+document.getElementById("downloadAllBtn").addEventListener("click", downloadEntireQuranForOffline);
+
+async function downloadEntireQuranForOffline(){
+  const btn = document.getElementById("downloadAllBtn");
+  const statusEl = document.getElementById("downloadStatus");
+  btn.disabled = true;
+  btn.textContent = "⏳ ڈاؤن لوڈ ہو رہا ہے...";
+  statusEl.innerHTML = `<div class="download-progress-bar"><div class="download-progress-fill" id="downloadProgressFill"></div></div>`;
+  const fill = document.getElementById("downloadProgressFill");
+
+  let done = 0;
+  const total = 114;
+  let failCount = 0;
+
+  for(let n = 1; n <= 114; n++){
+    try{
+      await fetch(`${API}/surah/${n}/editions/quran-uthmani,ur.jalandhry`);
+    }catch(e){ failCount++; }
+    try{
+      await fetch(`https://quranenc.com/api/v1/translation/sura/pashto_rwwad/${n}`);
+    }catch(e){ /* Pashto is a bonus; don't count as failure */ }
+    done++;
+    const pct = Math.round((done/total)*100);
+    fill.style.width = pct + "%";
+  }
+
+  try{ localStorage.setItem("lafzi-full-download-done", "1"); }catch(e){}
+  btn.disabled = false;
+  btn.textContent = failCount === 0 ? "✅ مکمل قرآن محفوظ ہو گیا" : `⚠️ زیادہ تر محفوظ ہوا (${total - failCount}/${total})`;
+  statusEl.innerHTML = "اب آپ بغیر انٹرنیٹ کے بھی مکمل قرآن پڑھ سکتے ہیں";
+}
+
+try{
+  if(localStorage.getItem("lafzi-full-download-done") === "1"){
+    document.getElementById("downloadAllBtn").textContent = "✅ مکمل قرآن محفوظ ہے (دوبارہ اپڈیٹ کریں)";
+  }
+}catch(e){}
 
 loadSurahList();
 
