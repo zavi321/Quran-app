@@ -531,13 +531,27 @@ function renderSurahTitle(meta){
     <span>سورۃ نمبر ${toEasternNumeral(meta.number)}</span>`;
 }
 
-const FULL_SURAH_SOURCES = {
-  noreen:  (n) => `https://archive.org/download/noreen-mohamed-siddiq/${String(n).padStart(3,"0")}.mp3`,
-  sadaqat: (n) => `https://archive.org/download/Sadaqat-Ali-kz/${String(n).padStart(3,"0")}.mp3`
+const FULL_SURAH_IDENTIFIERS = {
+  noreen:  "noreen-mohamed-siddiq",
+  sadaqat: "Sadaqat-Ali-kz"
 };
+const fullSurahFileCache = {};
+
+async function getFullSurahUrl(reciterKey, surahNumber){
+  const identifier = FULL_SURAH_IDENTIFIERS[reciterKey];
+  if(!fullSurahFileCache[identifier]){
+    const res = await fetch(`https://archive.org/metadata/${identifier}`);
+    const json = await res.json();
+    fullSurahFileCache[identifier] = (json.files || []).filter(f => /\.(mp3|ogg)$/i.test(f.name));
+  }
+  const padded = String(surahNumber).padStart(3, "0");
+  const file = fullSurahFileCache[identifier].find(f => f.name.startsWith(padded));
+  if(!file) return null;
+  return `https://archive.org/download/${identifier}/${encodeURIComponent(file.name)}`;
+}
 
 document.querySelectorAll(".full-surah-btn").forEach(btn => {
-  btn.addEventListener("click", () => {
+  btn.addEventListener("click", async () => {
     if(!btn.dataset.label) btn.dataset.label = btn.textContent;
     if(currentPlayingBtn === btn){
       reciteAudioEl.pause();
@@ -546,9 +560,20 @@ document.querySelectorAll(".full-surah-btn").forEach(btn => {
     }
     window.speechSynthesis.cancel();
     resetPlayingButton();
-    const url = FULL_SURAH_SOURCES[btn.dataset.reciter](currentSurahNum);
-    reciteAudioEl.src = url;
-    startPlayback(btn);
+    btn.textContent = "⏳ لوڈ ہو رہا ہے...";
+    try{
+      const url = await getFullSurahUrl(btn.dataset.reciter, currentSurahNum);
+      if(!url){
+        btn.textContent = "⚠️ اس قاری کی آڈیو نہیں ملی";
+        setTimeout(() => { btn.textContent = btn.dataset.label; }, 2200);
+        return;
+      }
+      reciteAudioEl.src = url;
+      startPlayback(btn);
+    }catch(e){
+      btn.textContent = "⚠️ اس قاری کی آڈیو نہیں ملی";
+      setTimeout(() => { btn.textContent = btn.dataset.label; }, 2200);
+    }
   });
 });
 
